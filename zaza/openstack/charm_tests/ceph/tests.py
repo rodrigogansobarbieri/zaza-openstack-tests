@@ -703,6 +703,8 @@ class CephProxyTest(unittest.TestCase):
     def setUpClass(cls):
         """Run class setup for running tests."""
         super(CephProxyTest, cls).setUpClass()
+        logging.info('Wait for idle/ready status...')
+        zaza_model.wait_for_application_states()
 
     def test_ceph_health(self):
         """Make sure ceph-proxy can communicate with ceph."""
@@ -710,3 +712,21 @@ class CephProxyTest(unittest.TestCase):
             zaza_model.run_on_leader("ceph-proxy", "sudo ceph health")["Code"],
             "0"
         )
+
+    def test_cinder_ceph_restrict_pool_setup(self):
+        """Make sure cinder-ceph restrict pool was created successfully."""
+        pools = zaza_ceph.get_ceph_pools('ceph-mon/0')
+        if 'cinder-ceph' not in pools:
+            msg = 'cinder-ceph pool was not found upon querying ceph-mon/0'
+            raise zaza_exceptions.CephPoolNotFound(msg)
+
+        expected = "pool=cinder-ceph, allow class-read " \
+                   "object_prefix rbd_children"
+        cmd = "sudo ceph auth get client.cinder-ceph"
+        result = zaza_model.run_on_unit('ceph-mon/0', cmd)
+        output = result.get('Stdout').strip()
+
+        if expected not in output:
+            msg = ('cinder-ceph pool restriction was not configured correctly.'
+                   ' Found: {}'.format(output))
+            raise zaza_exceptions.CephPoolNotConfigured(msg)
