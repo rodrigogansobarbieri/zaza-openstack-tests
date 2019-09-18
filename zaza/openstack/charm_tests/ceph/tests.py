@@ -720,6 +720,17 @@ class CephProxyTest(unittest.TestCase):
             msg = 'cinder-ceph pool was not found upon querying ceph-mon/0'
             raise zaza_exceptions.CephPoolNotFound(msg)
 
+        # DEBUG START
+        result = zaza_model.get_application_config('cinder-ceph')
+        logging.info('CONFIG: {}'.format(result))
+
+        cmd = "sudo cat /var/lib/juju/agents/unit-ceph-proxy-0/" \
+              "charm/hooks/ceph_broker.py"
+        result = zaza_model.run_on_unit('ceph-proxy/0', cmd)
+        output = result.get('Stdout').strip()
+        logging.info('FILE: {}'.format(output))
+        # DEBUG END
+
         expected = "pool=cinder-ceph, allow class-read " \
                    "object_prefix rbd_children"
         cmd = "sudo ceph auth get client.cinder-ceph"
